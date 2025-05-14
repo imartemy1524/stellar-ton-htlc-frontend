@@ -1,42 +1,60 @@
 import express, { Router, Request, Response } from 'express';
-import db from '../database'; // Adjust path as necessary
-import sqlite3 from 'sqlite3'; // Import sqlite3 for RunResult type
+import db from '../database'; 
+import sqlite3 from 'sqlite3';
 
 const router: Router = express.Router();
 
 interface Offer {
   id?: number;
-  fromuser: string;
-  touser?: string | null;
   status?: number;
-  walletfrom: string;
-  walletto?: string | null;
   amountfrom: number;
   amountto: number;
   networkfrom: string;
   networkto: string;
-  fromtoken?: string | null; // Added
-  totoken?: string | null;   // Added
-  startedat?: string; // Or Date, depending on how you want to handle it
+  fromtoken?: string | null;
+  totoken?: string | null;
+  
+  creator_ton_address: string;
+  creator_stellar_address: string;
+  taker_ton_address?: string | null;
+  taker_stellar_address?: string | null;
+  
   privatekey?: string | null;
+  startedat?: string; 
+
+  ton_htlc_address_user_a?: string | null;
+  ton_htlc_address_user_b?: string | null;
+  stellar_htlc_address_user_a?: string | null;
+  stellar_htlc_address_user_b?: string | null;
 }
 
 // POST /api/offers - Create a new offer
 router.post('/', (req: Request, res: Response) => {
-  const { 
-    fromuser, walletfrom, 
+  const {
     amountfrom, amountto, 
     networkfrom, networkto, 
-    fromtoken, totoken // Added
+    fromtoken, totoken, 
+    creator_ton_address,
+    creator_stellar_address
   }: Offer = req.body;
 
-  // Basic validation
-  if (!fromuser || !walletfrom || !amountfrom || !amountto || !networkfrom || !networkto || !fromtoken || !totoken) {
-    return res.status(400).json({ error: 'Missing required fields. Ensure fromtoken and totoken are provided.' });
+  if (
+    !amountfrom || !amountto || 
+    !networkfrom || !networkto || 
+    !fromtoken || !totoken ||
+    !creator_ton_address || !creator_stellar_address
+  ) {
+    return res.status(400).json({ error: 'Missing required fields. Ensure amounts, networks, tokens, and creator TON/Stellar addresses are provided.' });
   }
 
-  const sql = `INSERT INTO offers (fromuser, walletfrom, amountfrom, amountto, networkfrom, networkto, fromtoken, totoken, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`;
-  const params = [fromuser, walletfrom, amountfrom, amountto, networkfrom, networkto, fromtoken, totoken];
+  const sql = `INSERT INTO offers (
+    amountfrom, amountto, networkfrom, networkto, fromtoken, totoken, 
+    creator_ton_address, creator_stellar_address, status
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`;
+  const params = [
+    amountfrom, amountto, networkfrom, networkto, fromtoken, totoken,
+    creator_ton_address, creator_stellar_address
+  ];
 
   db.run(sql, params, function(this: sqlite3.RunResult, err: Error | null) {
     if (err) {
@@ -52,7 +70,7 @@ router.post('/', (req: Request, res: Response) => {
 
 // GET /api/offers - Get all offers
 router.get('/', (req: Request, res: Response) => {
-  const sql = "SELECT * FROM offers";
+  const sql = "SELECT * FROM offers ORDER BY startedat DESC";
   db.all(sql, [], (err: Error | null, rows: Offer[]) => {
     if (err) {
       res.status(500).json({ error: err.message });
@@ -87,13 +105,35 @@ router.get('/:id', (req: Request, res: Response) => {
 
 // PUT /api/offers/:id/accept - Accept an offer
 router.put('/:id/accept', (req: Request, res: Response) => {
-  const { touser, walletto, privatekey } = req.body;
-  if (!touser || !walletto || !privatekey) {
-    return res.status(400).json({ error: 'Missing required fields for accepting offer' });
+  const {
+    taker_ton_address, 
+    taker_stellar_address, 
+    privatekey,
+    ton_htlc_address_user_b, // If taker deploys their TON HTLC immediately
+    stellar_htlc_address_user_b // If taker deploys their Stellar HTLC immediately
+  } = req.body;
+  
+  if (!taker_ton_address || !taker_stellar_address || !privatekey) {
+    return res.status(400).json({ error: 'Missing required fields: taker TON & Stellar addresses, and privatekey.' });
   }
 
-  const sql = `UPDATE offers SET touser = ?, walletto = ?, privatekey = ?, status = 1 WHERE id = ? AND status = 0`;
-  const params = [touser, walletto, privatekey, req.params.id];
+  const sql = `UPDATE offers SET 
+    taker_ton_address = ?,
+    taker_stellar_address = ?,
+    privatekey = ?,
+    ton_htlc_address_user_b = ?,
+    stellar_htlc_address_user_b = ?,
+    status = 1 
+    WHERE id = ? AND status = 0`;
+    
+  const params = [
+    taker_ton_address, 
+    taker_stellar_address, 
+    privatekey, 
+    ton_htlc_address_user_b, // Can be null if not deployed yet or not applicable
+    stellar_htlc_address_user_b, // Can be null
+    req.params.id
+  ];
 
   db.run(sql, params, function(this: sqlite3.RunResult, err: Error | null) {
     if (err) {
@@ -101,33 +141,51 @@ router.put('/:id/accept', (req: Request, res: Response) => {
       return;
     }
     if (this.changes > 0) {
-      res.json({ message: `Offer ${req.params.id} accepted and status updated to 1` });
+      res.json({ message: `Offer ${req.params.id} accepted, status updated to 1.` });
     } else {
-      res.status(404).json({ error: `Offer with id ${req.params.id} not found or cannot be accepted (already accepted or in a different status).` });
+      res.status(404).json({ error: `Offer with id ${req.params.id} not found or cannot be accepted.` });
     }
   });
 });
 
-// PUT /api/offers/:id/status - Update offer status
+// PUT /api/offers/:id/status - Update offer status and potentially other fields like HTLC addresses
 router.put('/:id/status', (req: Request, res: Response) => {
-  const { status, privatekey } = req.body; // privatekey is optional, only needed for specific status changes
+  const { status, ...otherDataToUpdate } = req.body;
 
   if (status === undefined) {
     return res.status(400).json({ error: 'Missing status field' });
   }
 
-  let sql: string;
-  let params: (string | number | undefined)[];
+  const allowedFieldsToUpdate = [
+    'privatekey', 
+    'taker_ton_address', 'taker_stellar_address',
+    'ton_htlc_address_user_a', 'ton_htlc_address_user_b',
+    'stellar_htlc_address_user_a', 'stellar_htlc_address_user_b'
+  ];
+  
+  let setClauses: string[] = ['status = ?'];
+  let params: (string | number | null | undefined)[] = [status];
 
-  if (status === 2) {
-    sql = `UPDATE offers SET status = ? WHERE id = ? AND status = 1`;
-    params = [status, req.params.id];
-  } else if (status === 3 || status === 4 || status === -1) {
-    sql = `UPDATE offers SET status = ? WHERE id = ?`;
-    params = [status, req.params.id];
-  } else {
-    return res.status(400).json({ error: 'Invalid status value' });
+  for (const key in otherDataToUpdate) {
+    if (allowedFieldsToUpdate.includes(key) && otherDataToUpdate[key] !== undefined) {
+      setClauses.push(`${key} = ?`);
+      params.push(otherDataToUpdate[key]);
+    }
   }
+  params.push(req.params.id); 
+
+  let condition = 'id = ?';
+  // Add specific conditions for status transitions if needed, e.g.:
+  if (status === 1 && !Object.keys(otherDataToUpdate).some(k => k.startsWith('taker_'))) { 
+    // This would be a direct status update to 1 without accepting, generally not what we want.
+    // The /accept route is more appropriate for status 1.
+    // For now, allow any status update if ID matches and previous status allows.
+  } else if (status === 2) condition += ' AND status = 1'; 
+  else if (status === 3) condition += ' AND status = 2'; 
+  else if (status === 4) condition += ' AND status = 3'; 
+  // else if (status === -1) // allow -1 from many states
+
+  const sql = `UPDATE offers SET ${setClauses.join(', ')} WHERE ${condition}`;
 
   db.run(sql, params, function(this: sqlite3.RunResult, err: Error | null) {
     if (err) {
@@ -135,9 +193,9 @@ router.put('/:id/status', (req: Request, res: Response) => {
       return;
     }
     if (this.changes > 0) {
-      res.json({ message: `Offer ${req.params.id} status updated to ${status}` });
+      res.json({ message: `Offer ${req.params.id} updated successfully.` });
     } else {
-      res.status(404).json({ error: `Offer with id ${req.params.id} not found or status cannot be updated to ${status} from current state.` });
+      res.status(404).json({ error: `Offer with id ${req.params.id} not found or status/conditions not met for update.` });
     }
   });
 });

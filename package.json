@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@stellar/freighter-api": "^1.7.1",
+    "@ton/core": "^0.60.1",
     "@tonconnect/ui-react": "^2.0.0",
     "bootstrap": "^5.3.2",
+    "buffer": "^6.0.3",
     "react": "^19.1.0",
     "react-bootstrap": "^2.9.0",
     "react-dom": "^19.1.0",

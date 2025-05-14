@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
+import { TonConnectButton, useTonWallet } from '@tonconnect/ui-react';
 import { isConnected, getPublicKey, setAllowed } from "@stellar/freighter-api";
-import { Button, Alert, Card } from 'react-bootstrap';
+import { Button, Alert, Card, Row, Col } from 'react-bootstrap'; // Assuming Row and Col are correctly imported
+import { useWallet } from '../../contexts/WalletContext'; // Import useWallet
 
-// Basic styling for the button container, you can move this to a CSS file
 const walletSectionStyle: React.CSSProperties = {
   marginBottom: '2rem',
   padding: '1rem',
@@ -12,11 +12,21 @@ const walletSectionStyle: React.CSSProperties = {
 };
 
 const HomePage: React.FC = () => {
-  const [tonConnectUI] = useTonConnectUI(); // Get the TonConnectUI instance
-  const [stellarPublicKey, setStellarPublicKey] = useState<string | null>(null);
+  const { tonAddress, stellarPublicKey, setTonAddress, setStellarPublicKey } = useWallet();
+  const connectedTonWallet = useTonWallet();
+  
   const [stellarError, setStellarError] = useState<string | null>(null);
 
-  // Check Stellar connection status on component mount
+  // Effect to update context from TonConnect wallet changes
+  useEffect(() => {
+    if (connectedTonWallet) {
+      setTonAddress(connectedTonWallet.account.address);
+    } else {
+      setTonAddress(null);
+    }
+  }, [connectedTonWallet, setTonAddress]);
+
+  // Effect to check initial Freighter connection and update context
   useEffect(() => {
     const checkStellarConnection = async () => {
       try {
@@ -26,48 +36,36 @@ const HomePage: React.FC = () => {
         }
       } catch (e: any) {
         console.error("Error checking Stellar connection:", e);
-        setStellarError("Could not check Freighter connection. Make sure Freighter is installed and enabled.");
+        setStellarError("Could not check Freighter connection initially.");
       }
     };
     checkStellarConnection();
-  }, []);
+  }, [setStellarPublicKey]);
 
   const connectStellarWallet = async () => {
     setStellarError(null);
     try {
-      // Check if Freighter is available
       if (typeof window.freighter === 'undefined') {
-        setStellarError("Freighter is not installed. Please install the Freighter browser extension.");
-        return;
+        setStellarError("Freighter is not installed."); return;
       }
-
-      // Request access. This will prompt the user if not already allowed.
-      // setAllowed is useful to "wake up" Freighter if it's installed but not active on the page.
       await setAllowed(); 
-      
       if (await isConnected()) {
         const publicKey = await getPublicKey();
         setStellarPublicKey(publicKey);
       } else {
-        // This case might not be reached if setAllowed() successfully connects, 
-        // but it's good for completeness.
-        setStellarError("Connection to Freighter was not successful. Please try again.");
+        setStellarError("Connection to Freighter was not successful.");
       }
     } catch (e: any) {
       console.error("Freighter connection error:", e);
-      setStellarError(e.message || "An error occurred while connecting to Freighter.");
+      setStellarError(e.message || "An error occurred connecting to Freighter.");
     }
   };
 
   const disconnectStellarWallet = () => {
-    // Freighter doesn't have an explicit programmatic disconnect API that revokes permissions.
-    // Users manage connections through the extension itself.
-    // We can clear our local state to reflect a "disconnected" UI state.
     setStellarPublicKey(null);
     setStellarError(null);
-    // You might want to also call setAllowed() again to see if it prompts or if it's truly disconnected by the user.
-    // For now, simply clearing state is sufficient for the UI.
-    alert("To fully disconnect or manage permissions, please use the Freighter extension.")
+    // No explicit disconnect in Freighter API, user manages through extension
+    alert("To fully manage Freighter permissions, please use the extension.")
   };
 
   return (
@@ -82,14 +80,10 @@ const HomePage: React.FC = () => {
           <Card style={walletSectionStyle}>
             <Card.Body>
               <Card.Title>TON Wallet</Card.Title>
-              <Card.Text>
-                Connect your TON wallet using Tonkeeper or other compatible wallets.
-              </Card.Text>
               <TonConnectButton />
-              {tonConnectUI.connected && (
+              {tonAddress && (
                 <Alert variant="success" className="mt-2">
-                  TON Wallet Connected!
-                  {/* You can access wallet info via useTonWallet() hook if needed here */}
+                  TON Wallet Connected: <small>{tonAddress.substring(0,6)}...{tonAddress.substring(tonAddress.length-4)}</small>
                 </Alert>
               )}
             </Card.Body>
@@ -101,20 +95,13 @@ const HomePage: React.FC = () => {
             <Card.Body>
               <Card.Title>Stellar Wallet (Freighter)</Card.Title>
               {!stellarPublicKey ? (
-                <>
-                  <Card.Text>
-                    Connect your Stellar wallet using the Freighter browser extension.
-                  </Card.Text>
-                  <Button variant="primary" onClick={connectStellarWallet}>
-                    Connect Freighter
-                  </Button>
-                </>
+                <Button variant="primary" onClick={connectStellarWallet}>
+                  Connect Freighter
+                </Button>
               ) : (
                 <>
                   <Alert variant="success">
-                    Freighter Connected!
-                    <br />
-                    Public Key: <strong>{stellarPublicKey.substring(0, 8)}...{stellarPublicKey.substring(stellarPublicKey.length - 8)}</strong>
+                    Freighter Connected: <small>{stellarPublicKey.substring(0, 8)}...{stellarPublicKey.substring(stellarPublicKey.length - 8)}</small>
                   </Alert>
                   <Button variant="outline-secondary" onClick={disconnectStellarWallet} size="sm">
                     Disconnect Freighter (UI)
@@ -125,14 +112,13 @@ const HomePage: React.FC = () => {
           </Card>
         </Col>
       </Row>
-
-      {/* TODO: Global wallet connection status check before proceeding to other app functions */}
+      <div className="mt-4">
+        <h4>Current Context State:</h4>
+        <p>TON Address: {tonAddress || 'Not Connected'}</p>
+        <p>Stellar Public Key: {stellarPublicKey || 'Not Connected'}</p>
+      </div>
     </div>
   );
 };
-
-// Dummy Row and Col for structure - in a real app, import from react-bootstrap
-const Row: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => <div className={`row ${className}`}>{children}</div>;
-const Col: React.FC<{ children: React.ReactNode, md?: number }> = ({ children, md }) => <div className={`col-md-${md}`}>{children}</div>;
 
 export default HomePage;
