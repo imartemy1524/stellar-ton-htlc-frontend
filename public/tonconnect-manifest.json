@@ -1,0 +1,7 @@
+{
+  "url": "https://<YOUR_APP_URL>", // Replace with your app's deployed URL
+  "name": "HTLC Swap App",
+  "iconUrl": "https://<YOUR_APP_URL>/icon.png", // Replace with a URL to your app's icon
+  "termsOfUseUrl": "https://<YOUR_APP_URL>/terms-of-use.txt",
+  "privacyPolicyUrl": "https://<YOUR_APP_URL>/privacy-policy.txt"
+}
