@@ -1,4 +1,3 @@
-import React from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { Container, Navbar, Nav } from 'react-bootstrap';
 import './App.css';

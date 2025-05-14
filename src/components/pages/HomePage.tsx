@@ -4,6 +4,16 @@ import { isConnected, getPublicKey, setAllowed } from "@stellar/freighter-api";
 import { Button, Alert, Card, Row, Col } from 'react-bootstrap'; // Assuming Row and Col are correctly imported
 import { useWallet } from '../../contexts/WalletContext'; // Import useWallet
 
+// Extend the Window interface to include Freighter if it might exist
+interface WindowWithFreighter extends Window {
+  freighter?: {
+    isConnected: () => Promise<boolean>;
+    getPublicKey: () => Promise<string>;
+    setAllowed: () => Promise<void>;
+    // Add other Freighter methods if you use them
+  };
+}
+
 const walletSectionStyle: React.CSSProperties = {
   marginBottom: '2rem',
   padding: '1rem',
@@ -34,9 +44,10 @@ const HomePage: React.FC = () => {
           const publicKey = await getPublicKey();
           setStellarPublicKey(publicKey);
         }
-      } catch (e: any) {
+      } catch (e) {
         console.error("Error checking Stellar connection:", e);
-        setStellarError("Could not check Freighter connection initially.");
+        const errorMessage = e instanceof Error ? e.message : "Could not check Freighter connection initially.";
+        setStellarError(errorMessage);
       }
     };
     checkStellarConnection();
@@ -45,7 +56,7 @@ const HomePage: React.FC = () => {
   const connectStellarWallet = async () => {
     setStellarError(null);
     try {
-      if (typeof window.freighter === 'undefined') {
+      if (typeof (window as WindowWithFreighter).freighter === 'undefined') {
         setStellarError("Freighter is not installed."); return;
       }
       await setAllowed(); 
@@ -55,9 +66,10 @@ const HomePage: React.FC = () => {
       } else {
         setStellarError("Connection to Freighter was not successful.");
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error("Freighter connection error:", e);
-      setStellarError(e.message || "An error occurred connecting to Freighter.");
+      const errorMessage = e instanceof Error ? e.message : "An error occurred connecting to Freighter.";
+      setStellarError(errorMessage);
     }
   };
 

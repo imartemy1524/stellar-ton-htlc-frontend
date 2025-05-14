@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, type ReactNode } from 'react';
 
 interface WalletState {
   tonAddress: string | null;
@@ -20,6 +20,7 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useWallet = (): WalletState => {
   const context = useContext(WalletContext);
   if (context === undefined) {

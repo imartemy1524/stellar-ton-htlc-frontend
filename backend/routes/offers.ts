@@ -163,8 +163,8 @@ router.put('/:id/status', (req: Request, res: Response) => {
     'stellar_htlc_address_user_a', 'stellar_htlc_address_user_b'
   ];
   
-  let setClauses: string[] = ['status = ?'];
-  let params: (string | number | null | undefined)[] = [status];
+  const setClauses: string[] = ['status = ?'];
+  const params: (string | number | null | undefined)[] = [status];
 
   for (const key in otherDataToUpdate) {
     if (allowedFieldsToUpdate.includes(key) && otherDataToUpdate[key] !== undefined) {

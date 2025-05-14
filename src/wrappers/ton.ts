@@ -2,13 +2,14 @@ import {
   Address,
   beginCell,
   Cell,
-  Contract,
+  type Contract, // type-only
   contractAddress,
-  ContractProvider,
-  Sender,
+  type ContractProvider, // type-only
+  type Sender, // type-only
   SendMode,
   Slice,
 } from "@ton/core";
+import { Buffer } from "buffer"; // Added
 
 export type HTLCSmartContractConfig = {
   jetton_address: Address | null;
@@ -43,10 +44,16 @@ export const Opcodes = {
 };
 
 export class HTLCSmartContract implements Contract {
+  readonly address: Address;
+  readonly init?: { code: Cell; data: Cell };
+
   constructor(
-    readonly address: Address,
-    readonly init?: { code: Cell; data: Cell },
-  ) {}
+    address: Address,
+    init?: { code: Cell; data: Cell },
+  ) {
+    this.address = address;
+    this.init = init;
+  }
 
   static createFromAddress(address: Address) {
     return new HTLCSmartContract(address);

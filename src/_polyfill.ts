@@ -1,3 +1,7 @@
 import { Buffer } from 'buffer';
 
-(window as any).Buffer = Buffer;
+interface WindowWithBuffer extends Window {
+    Buffer?: typeof Buffer;
+}
+
+(window as WindowWithBuffer).Buffer = Buffer;

@@ -46,7 +46,7 @@ const CreateOfferPage: React.FC = () => {
     }
   }, [formData.networkTo, formData.toToken]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -120,8 +120,9 @@ const CreateOfferPage: React.FC = () => {
         fromToken: PREDEFINED_TOKENS.TON[0]?.address || '', 
         toToken: PREDEFINED_TOKENS.Stellar[0]?.address || '',
       }); 
-    } catch (err: any) {
-      setError(err.message || 'An error occurred.');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred.';
+      setError(errorMessage);
     }
   };
 

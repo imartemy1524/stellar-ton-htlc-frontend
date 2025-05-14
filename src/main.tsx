@@ -8,7 +8,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 import App from './App.tsx';
 
-const manifestUrl = process.env.NODE_ENV === 'development' 
+const manifestUrl = import.meta.env.MODE === 'development' 
   ? 'http://localhost:5173/tonconnect-manifest.json' 
   : 'https://<YOUR_DEPLOYED_APP_URL>/tonconnect-manifest.json'; 
 
