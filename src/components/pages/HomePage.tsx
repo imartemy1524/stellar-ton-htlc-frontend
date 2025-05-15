@@ -4,16 +4,6 @@ import { isConnected, getPublicKey, setAllowed } from "@stellar/freighter-api";
 import { Button, Alert, Card, Row, Col } from 'react-bootstrap'; // Assuming Row and Col are correctly imported
 import { useWallet } from '../../contexts/WalletContext'; // Import useWallet
 
-// Extend the Window interface to include Freighter if it might exist
-interface WindowWithFreighter extends Window {
-  freighter?: {
-    isConnected: () => Promise<boolean>;
-    getPublicKey: () => Promise<string>;
-    setAllowed: () => Promise<void>;
-    // Add other Freighter methods if you use them
-  };
-}
-
 const walletSectionStyle: React.CSSProperties = {
   marginBottom: '2rem',
   padding: '1rem',
@@ -56,7 +46,7 @@ const HomePage: React.FC = () => {
   const connectStellarWallet = async () => {
     setStellarError(null);
     try {
-      if (typeof (window as WindowWithFreighter).freighter === 'undefined') {
+      if (typeof window.freighter === 'undefined') {
         setStellarError("Freighter is not installed."); return;
       }
       await setAllowed(); 

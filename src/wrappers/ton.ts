@@ -8,7 +8,9 @@ import {
   type Sender, // type-only
   SendMode,
   Slice,
+  type StateInit,
 } from "@ton/core";
+import type { Maybe } from "@ton/core/dist/utils/maybe";
 import { Buffer } from "buffer"; // Added
 
 export type HTLCSmartContractConfig = {
@@ -47,10 +49,7 @@ export class HTLCSmartContract implements Contract {
   readonly address: Address;
   readonly init?: { code: Cell; data: Cell };
 
-  constructor(
-    address: Address,
-    init?: { code: Cell; data: Cell },
-  ) {
+  constructor(address: Address, init?: { code: Cell; data: Cell }) {
     this.address = address;
     this.init = init;
   }
@@ -133,3 +132,89 @@ export class HTLCSmartContract implements Contract {
 export const CodeTonCell = Cell.fromHex(
   "b5ee9c7241020701000166000114ff00f4a413f4bcf2c80b01020162020502f8d020c700915be001d0d3030171b0915be0fa403001d31fdb3c2182100822d8aeba8e5931f841d70b01c000f2e4d1fa4030f861f846f845c8f841cf16f842cf16f843cf16c9c8ccf844fa02cb27cbffc9ed548228737563636573738038820898968072fb028018c8cb055003cf1602a620a66f12cf01c9810083fb000603027ee0218210e64ad8ecba8e9631f845f823b9f2d4d2f902f846bdf2d4d4f84301db3ce0308210d0066d3bba8e8df845f823bef2d4d3f84201db3ce030840ff2f0040400a6f8276f2230820afaf080b9f2d4d58260636f696e73207265636569766564c8cb8fc981020382100f8a7ea5aa3fc8cb5ff844fa025004cf1658cf1612cb0dccc9718018c8cb05f841cf16cb6eccc98100b0fb000121a10ec5b679f083f085f087f089f08bf08d06004ced44d0d401d0fa4001f861fa4001f862fa4001f863d1fa0001f864d32701f865d3ff01f866d1f60eba26",
 );
+
+export class JettonMinter implements Contract {
+  init?: Maybe<StateInit>;
+  address: Address;
+
+  constructor(address: Address, init?: { code: Cell; data: Cell }) {
+    this.init = init;
+    this.address = address;
+  }
+
+  static createFromAddress(address: Address) {
+    return new JettonMinter(address);
+  }
+
+  async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
+    await provider.internal(via, {
+      value,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      body: beginCell().endCell(),
+    });
+  }
+
+  async getWalletAddressOf(provider: ContractProvider, address: Address) {
+    return (
+      await provider.get("get_wallet_address", [
+        { type: "slice", cell: beginCell().storeAddress(address).endCell() },
+      ])
+    ).stack.readAddress();
+  }
+}
+
+export class JettonWallet implements Contract {
+  address: Address;
+  init?: Maybe<StateInit>;
+  constructor(address: Address, init?: { code: Cell; data: Cell }) {
+    this.address = address;
+    this.init = init;
+  }
+
+  static createFromAddress(address: Address) {
+    return new JettonWallet(address);
+  }
+
+  async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
+    await provider.internal(via, {
+      value,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      body: beginCell().endCell(),
+    });
+  }
+
+  async sendTransfer(
+    provider: ContractProvider,
+    via: Sender,
+    value: bigint,
+    forwardValue: bigint,
+    recipient: Address,
+    amount: bigint,
+    forwardPayload: Cell,
+  ) {
+    await provider.internal(via, {
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      body: beginCell()
+        .storeUint(0x0f8a7ea5, 32)
+        .storeUint(0, 64)
+        .storeCoins(amount)
+        .storeAddress(recipient)
+        .storeAddress(via.address)
+        .storeUint(0, 1)
+        .storeCoins(forwardValue)
+        .storeUint(1, 1)
+        .storeRef(forwardPayload)
+        .endCell(),
+      value: value + forwardValue,
+    });
+  }
+
+  async getJettonBalance(provider: ContractProvider) {
+    const state = await provider.getState();
+    if (state.state.type !== "active") {
+      return 0n;
+    }
+    const res = await provider.get("get_wallet_data", []);
+    return res.stack.readBigNumber();
+  }
+}
