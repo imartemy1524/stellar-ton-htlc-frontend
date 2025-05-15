@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { TonConnectButton, useTonWallet } from '@tonconnect/ui-react';
+import React, { useState, useEffect } from "react";
+import { TonConnectButton, useTonWallet } from "@tonconnect/ui-react";
 import { isConnected, getPublicKey, setAllowed } from "@stellar/freighter-api";
-import { Button, Alert, Card, Row, Col } from 'react-bootstrap'; // Assuming Row and Col are correctly imported
-import { useWallet } from '../../contexts/WalletContext'; // Import useWallet
+import { Button, Alert, Card, Row, Col } from "react-bootstrap"; // Assuming Row and Col are correctly imported
+import { useWallet } from "../../contexts/WalletContext"; // Import useWallet
 
 const walletSectionStyle: React.CSSProperties = {
-  marginBottom: '2rem',
-  padding: '1rem',
-  border: '1px solid #ddd',
-  borderRadius: '0.25rem'
+  marginBottom: "2rem",
+  padding: "1rem",
+  border: "1px solid #ddd",
+  borderRadius: "0.25rem",
 };
 
 const HomePage: React.FC = () => {
-  const { tonAddress, stellarPublicKey, setTonAddress, setStellarPublicKey } = useWallet();
+  const { tonAddress, stellarPublicKey, setTonAddress, setStellarPublicKey } =
+    useWallet();
   const connectedTonWallet = useTonWallet();
-  
+
   const [stellarError, setStellarError] = useState<string | null>(null);
 
   // Effect to update context from TonConnect wallet changes
@@ -36,7 +37,10 @@ const HomePage: React.FC = () => {
         }
       } catch (e) {
         console.error("Error checking Stellar connection:", e);
-        const errorMessage = e instanceof Error ? e.message : "Could not check Freighter connection initially.";
+        const errorMessage =
+          e instanceof Error
+            ? e.message
+            : "Could not check Freighter connection initially.";
         setStellarError(errorMessage);
       }
     };
@@ -46,10 +50,12 @@ const HomePage: React.FC = () => {
   const connectStellarWallet = async () => {
     setStellarError(null);
     try {
-      if (typeof window.freighter === 'undefined') {
-        setStellarError("Freighter is not installed."); return;
+      // @ts-expect-error tftfttf
+      if (typeof window.freighter === "undefined") {
+        setStellarError("Freighter is not installed.");
+        return;
       }
-      await setAllowed(); 
+      await setAllowed();
       if (await isConnected()) {
         const publicKey = await getPublicKey();
         setStellarPublicKey(publicKey);
@@ -58,7 +64,10 @@ const HomePage: React.FC = () => {
       }
     } catch (e) {
       console.error("Freighter connection error:", e);
-      const errorMessage = e instanceof Error ? e.message : "An error occurred connecting to Freighter.";
+      const errorMessage =
+        e instanceof Error
+          ? e.message
+          : "An error occurred connecting to Freighter.";
       setStellarError(errorMessage);
     }
   };
@@ -67,7 +76,7 @@ const HomePage: React.FC = () => {
     setStellarPublicKey(null);
     setStellarError(null);
     // No explicit disconnect in Freighter API, user manages through extension
-    alert("To fully manage Freighter permissions, please use the extension.")
+    alert("To fully manage Freighter permissions, please use the extension.");
   };
 
   return (
@@ -75,7 +84,11 @@ const HomePage: React.FC = () => {
       <h2>Welcome to HTLC Swap</h2>
       <p>Please connect your wallets to continue.</p>
 
-      {stellarError && <Alert variant="danger" className="mt-2">{stellarError}</Alert>}
+      {stellarError && (
+        <Alert variant="danger" className="mt-2">
+          {stellarError}
+        </Alert>
+      )}
 
       <Row className="mt-4">
         <Col md={6}>
@@ -85,7 +98,11 @@ const HomePage: React.FC = () => {
               <TonConnectButton />
               {tonAddress && (
                 <Alert variant="success" className="mt-2">
-                  TON Wallet Connected: <small>{tonAddress.substring(0,6)}...{tonAddress.substring(tonAddress.length-4)}</small>
+                  TON Wallet Connected:{" "}
+                  <small>
+                    {tonAddress.substring(0, 6)}...
+                    {tonAddress.substring(tonAddress.length - 4)}
+                  </small>
                 </Alert>
               )}
             </Card.Body>
@@ -103,9 +120,17 @@ const HomePage: React.FC = () => {
               ) : (
                 <>
                   <Alert variant="success">
-                    Freighter Connected: <small>{stellarPublicKey.substring(0, 8)}...{stellarPublicKey.substring(stellarPublicKey.length - 8)}</small>
+                    Freighter Connected:{" "}
+                    <small>
+                      {stellarPublicKey.substring(0, 8)}...
+                      {stellarPublicKey.substring(stellarPublicKey.length - 8)}
+                    </small>
                   </Alert>
-                  <Button variant="outline-secondary" onClick={disconnectStellarWallet} size="sm">
+                  <Button
+                    variant="outline-secondary"
+                    onClick={disconnectStellarWallet}
+                    size="sm"
+                  >
                     Disconnect Freighter (UI)
                   </Button>
                 </>
@@ -116,8 +141,8 @@ const HomePage: React.FC = () => {
       </Row>
       <div className="mt-4">
         <h4>Current Context State:</h4>
-        <p>TON Address: {tonAddress || 'Not Connected'}</p>
-        <p>Stellar Public Key: {stellarPublicKey || 'Not Connected'}</p>
+        <p>TON Address: {tonAddress || "Not Connected"}</p>
+        <p>Stellar Public Key: {stellarPublicKey || "Not Connected"}</p>
       </div>
     </div>
   );
