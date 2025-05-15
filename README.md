@@ -1,54 +1,84 @@
-# React + TypeScript + Vite
+# HTLC Cross-Chain Swap Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This frontend application provides a user interface for creating and managing Hashed Timelock Contracts (HTLC) between TON and Stellar blockchains. It enables secure cross-chain token swaps without requiring trust between parties.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Connect to TON and Stellar wallets (TON Connect and Freighter)
+- Create swap offers between TON and Stellar
+- View and accept open swap offers
+- Deploy HTLC smart contracts
+- Claim funds with secret preimages
+- View offer history and status
 
-## Expanding the ESLint configuration
+## Setup & Installation
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Clone the repository
+2. Install dependencies:
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+3. Start API service:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+cd backend
+npm install
+npm start
 ```
+
+3. Start the development server:
+
+```bash
+npm run dev
+```
+
+## Technology Stack
+
+- **React**: Frontend framework
+- **TypeScript**: Type-safe JavaScript
+- **Vite**: Modern build tool
+- **React Bootstrap**: UI components
+- **TON Connect**: TON wallet integration
+- **Freighter API**: Stellar wallet integration
+- **@ton/core**: TON blockchain interaction
+- **@stellar/stellar-sdk**: Stellar blockchain interaction
+
+## Wallet Requirements
+
+- For TON operations: Any TON Connect compatible wallet
+- For Stellar operations: Freighter browser extension
+
+## Backend Integration
+
+This frontend connects to a backend service (expected at `http://localhost:3001`) that manages offer persistence and tracking.
+
+## Smart Contracts
+
+The application interacts with:
+
+- TON HTLC contracts (deployed on-demand)
+- Stellar HTLC contracts (deployed on-demand)
+
+## HTLC Workflow
+
+1. **Creator** creates an offer specifying tokens and amounts
+2. **Taker** accepts the offer and deploys their HTLC with a secret
+3. **Creator** deploys their HTLC using the same hash
+4. **Taker** claims funds using the secret, revealing it
+5. **Creator** uses the revealed secret to claim the counterparty funds
+
+## Development
+
+Built with React + TypeScript + Vite with HMR and ESLint rules.
+
+### Building for Production
+
+```bash
+npm run build
+```
+
+## License
+
+MIT
